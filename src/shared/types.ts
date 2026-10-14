@@ -79,7 +79,7 @@ export interface PathElement extends ElementBase {
 
 export interface ImageElement extends ElementBase {
   type: 'image';
-  format: 'png' | 'jpg';
+  format: 'png' | 'jpg' | 'svg';
   bytes: Uint8Array;
   /** 0..1 opacity inherited from ancestors (the export already bakes in the node's own opacity). */
   opacity: number;
@@ -159,12 +159,15 @@ export interface Warning {
 export interface ExportOptions {
   /** 'frame' derives the slide height from the frame aspect; the others letterbox into a fixed ratio. */
   layout: 'frame' | '16:9' | '4:3';
-  /** Physical slide width. 13.333 in is PowerPoint's default widescreen width, so 1920 px → 1 px = 0.5 pt. */
+  /**
+   * Physical slide width. 20 in maps 1920 px at 96 DPI (1 px = 9525 EMU = 0.75 pt), the convention
+   * Pitchdeck uses; 13.333 in is PowerPoint's own widescreen default (1 px = 0.5 pt).
+   */
   slideWidthIn: number;
   /** false = every slide becomes a single flattened image. */
   editable: boolean;
-  /** 'shapes' converts vector layers to editable freeforms; 'raster' exports them as images. */
-  vectors: 'shapes' | 'raster';
+  /** 'shapes' converts vectors to editable freeforms; 'svg' embeds them as SVG (crisp, PowerPoint 2016+); 'raster' as PNG. */
+  vectors: 'shapes' | 'svg' | 'raster';
   /** Export scale for rasterized layers. */
   imageScale: 1 | 2 | 3 | 4;
   /** 'auto' picks JPG for opaque rectangular photos and PNG otherwise. */
@@ -172,21 +175,30 @@ export interface ExportOptions {
   order: 'position' | 'layers' | 'name' | 'selection';
   /** A text layer whose name starts with this (case-insensitive) becomes speaker notes instead of slide content. */
   notesLayerName: string;
-  /** 'family' → "Inter"; 'family-style' → "Inter SemiBold" for non-regular/bold weights. */
-  fontFace: 'family' | 'family-style';
+  /**
+   * 'family' → "Inter" (bold/italic as flags); 'family-style' → "Inter SemiBold" for weights PowerPoint
+   * cannot express as flags; 'full' → always "Inter Regular" / "Inter Semi Bold Italic" (Pitchdeck's convention).
+   */
+  fontFace: 'family' | 'family-style' | 'full';
+  /**
+   * Percentage added to the width of fixed-width text boxes. PowerPoint's glyph advances differ a
+   * little from Figma's, so lines can wrap early (positive values widen) or late (negative narrows).
+   */
+  textWidthAdjustPct: number;
   fileName: string;
 }
 
 export const DEFAULT_OPTIONS: ExportOptions = {
   layout: 'frame',
-  slideWidthIn: 13.333,
+  slideWidthIn: 20,
   editable: true,
   vectors: 'shapes',
   imageScale: 2,
   imageFormat: 'auto',
   order: 'position',
   notesLayerName: 'notes',
-  fontFace: 'family',
+  fontFace: 'family-style',
+  textWidthAdjustPct: 0,
   fileName: '',
 };
 

@@ -15,9 +15,10 @@ export const FONT_FAMILY_MAP: Record<string, string> = {
 
 const PLAIN_STYLES = new Set(['', 'regular', 'normal', 'book', 'roman', 'bold', 'text']);
 
-export function resolveFontFace(family: string, style: string, mode: 'family' | 'family-style'): string {
+export function resolveFontFace(family: string, style: string, mode: 'family' | 'family-style' | 'full'): string {
   const base = FONT_FAMILY_MAP[family] ?? family;
   if (mode === 'family') return base;
+  if (mode === 'full') return `${base} ${style || 'Regular'}`.trim();
   const weight = style
     .replace(/\b(italic|oblique)\b/gi, '')
     .replace(/\s+/g, ' ')

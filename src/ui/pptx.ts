@@ -201,7 +201,7 @@ function addPath(ps: PptxSlide, el: PathElement, u: Units, slideNumbers: Map<str
 }
 
 function addImage(ps: PptxSlide, el: ImageElement, u: Units, slideNumbers: Map<string, number>): void {
-  const mime = el.format === 'jpg' ? 'image/jpeg' : 'image/png';
+  const mime = el.format === 'jpg' ? 'image/jpeg' : el.format === 'svg' ? 'image/svg+xml' : 'image/png';
   ps.addImage({
     data: `${mime};base64,${toBase64(el.bytes)}`,
     ...placement(el, u),
@@ -252,6 +252,7 @@ function addText(ps: PptxSlide, el: TextElement, u: Units, options: ExportOption
 
   const box: TextPropsOptions = {
     ...placement(el, u),
+    ...textBoxWidth(el, u, options),
     margin: 0,
     inset: 0,
     isTextBox: true,
@@ -265,9 +266,22 @@ function addText(ps: PptxSlide, el: TextElement, u: Units, options: ExportOption
   };
   if (el.lineHeight) {
     if (el.lineHeight.unit === 'px') box.lineSpacing = u.pt(el.lineHeight.value);
-    else box.lineSpacingMultiple = round(el.lineHeight.value / 100, 3);
+    // Figma's % is of the font size; PowerPoint's % is of the font's natural line height (≈1.2 em).
+    else box.lineSpacingMultiple = round(el.lineHeight.value / 120, 5);
   }
   ps.addText(runs, stripUndefined(box));
+}
+
+/**
+ * Fixed-width boxes can be widened/narrowed to compensate for renderer glyph-advance differences.
+ * The box grows/shrinks around its alignment anchor so left, centred and right text stay put.
+ */
+function textBoxWidth(el: TextElement, u: Units, options: ExportOptions): Pick<TextPropsOptions, 'x' | 'w'> {
+  const pct = options.textWidthAdjustPct || 0;
+  if (!pct || el.autoResize === 'width_height') return {};
+  const delta = el.w * (pct / 100);
+  const shift = el.align === 'center' ? delta / 2 : el.align === 'right' ? delta : 0;
+  return { x: u.x(el.x - shift), w: u.len(el.w + delta) };
 }
 
 // ---- helpers -----------------------------------------------------------------------------

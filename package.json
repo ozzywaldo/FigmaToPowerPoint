@@ -9,7 +9,8 @@
     "watch": "node build.mjs --watch",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node build.mjs --tests && node --test \"dist-test/*.test.mjs\"",
-    "check": "npm run typecheck && npm run build && npm test"
+    "check": "npm run typecheck && npm run build && npm test",
+    "compare": "node tools/compare.mjs"
   },
   "license": "MIT",
   "dependencies": {
@@ -17,8 +18,11 @@
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.141.0",
+    "@types/pngjs": "^6.0.5",
     "esbuild": "^0.28.2",
+    "fast-xml-parser": "^4.5.7",
     "jszip": "^3.10.2",
+    "pngjs": "^7.0.0",
     "typescript": "^5.9.3"
   }
 }

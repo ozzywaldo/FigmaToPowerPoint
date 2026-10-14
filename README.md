@@ -40,10 +40,11 @@ Clicking a slide name scrolls the canvas to it.
 
 ### Slide size
 
-The deck uses the most common frame size. `13.333 in` wide is PowerPoint's own widescreen default,
-which makes a 1920 px frame map to exactly 0.5 pt per pixel, so a 48 px headline becomes 24 pt.
-Frames of other sizes are fitted proportionally and centred (letterboxed), never cropped.
-You can also force 16:9 or 4:3.
+The deck uses the most common frame size. The default width of `20 in` is a 96 DPI mapping: a
+1920 px frame becomes exactly 9525 EMU per pixel and 0.75 pt per pixel (a 72 px headline is 54 pt).
+That is the convention Pitchdeck's exports use, so decks from both tools line up. `13.333 in` gives
+PowerPoint's own widescreen default instead (1 px = 0.5 pt). Frames of other sizes are fitted
+proportionally and centred (letterboxed), never cropped. You can also force 16:9 or 4:3.
 
 ### What stays editable
 
@@ -100,7 +101,10 @@ src/plugin/geometry.ts   Affine transforms → PowerPoint placement (rotation/fl
 src/ui/ui.ts, ui.css     Panel (vanilla DOM, Figma theme tokens)
 src/ui/pptx.ts           Slide model → pptxgenjs (pure; runs in Node for tests)
 src/ui/fonts.ts          Font face resolution + brand overrides
-test/*.test.ts           node:test suites; pptx.test.ts writes a real deck and inspects its XML
+src/import/pptx-import.ts .pptx → slide model (round-trip tests, seed of a PPTX import feature)
+tools/compare.mjs        Visual regression harness (LibreOffice render + per-slide diff report)
+test/*.test.ts           node:test suites; pptx.test.ts writes a real deck and inspects its XML,
+                         roundtrip.test.ts re-emits a real deck when DECK_PPTX is set
 ```
 
 ### Extending it
@@ -114,6 +118,41 @@ test/*.test.ts           node:test suites; pptx.test.ts writes a real deck and i
   placeholders is a natural next step in `buildPresentation`.
 - **Notes stored in the file**: swap the layer-name convention for `node.setPluginData` plus a
   notes field in the panel.
+
+## Fidelity: measuring it, and what we learned from Pitchdeck's output
+
+`npm run compare -- --candidate deck.pptx --reference figma.pdf --out report` renders the deck with
+LibreOffice, rasterises both sides at the same width and writes `report/index.html`: per slide, a
+strip of *reference | candidate | diff* plus two numbers, RMSE over RGB (0 = identical) and the
+share of pixels that moved. The reference can also be another `.pptx`. It needs `soffice` and
+`pdftoppm` on PATH. **For the real verdict, open the candidate in PowerPoint, save it as PDF and
+pass that PDF as `--candidate`** — LibreOffice is only a proxy for PowerPoint's text layout.
+
+`src/import/pptx-import.ts` reads a `.pptx` back into the slide model. `DECK_PPTX=deck.pptx
+DECK_OUT=out npm test` pushes a real deck through importer → emitter → importer and asserts that
+geometry, text, fonts and notes survive; the re-emitted file lands in `out/` for the harness.
+`DECK_OPTIONS='{"textWidthAdjustPct":-2}'` overrides emitter options for experiments.
+
+Calibrating against a 31-slide deck exported by Pitchdeck and the matching Figma PDF:
+
+| Pitchdeck convention | Here |
+| --- | --- |
+| 20 in × 11.25 in slide (96 DPI, 1 px = 9525 EMU) | same, default |
+| Text boxes: zero insets, `wrap="square"`, anchor from Figma vertical align | same |
+| Font faces written as full names ("Lato Regular", "Instrument Serif Italic") | `fontFace: 'full'`; default is family + weight, which fontconfig/LibreOffice resolves and PowerPoint lists |
+| Letter spacing: `spc` = tracking in 1/100 pt, `kern="0"` | same |
+| Line height: pixels → exact `spcPts`; percent → `spcPct` = Figma % ÷ 1.2 | same |
+| Every slide's frame fill rasterised to a full-bleed image | solid fills become a slide background; only non-solid fills are rasterised |
+| Vectors and logos as SVG with PNG fallback | `vectors: 'svg'` does the same; the default emits editable freeforms |
+| Groups with masks/clipping, gradients, textures → PNG | same, each reported as a warning |
+
+Round-tripping that deck through this emitter and rendering both files gives pixel-identical slides
+on 25 of 31 (mean RMSE 0.002; the rest differ only where SVGs were swapped for their PNG fallback).
+Against the Figma PDF both score a mean RMSE of about 0.09 with ~4 % of pixels moved. Inspecting
+those slides shows the residual is glyph anti-aliasing between renderers plus occasional line-wrap
+differences where the renderer's advances are a few percent narrower than Figma's (uppercase,
+tracked body text is the worst case). Narrowing boxes (`textWidthAdjustPct`) did not help in the
+LibreOffice proxy; the knob exists for calibrating against PowerPoint itself.
 
 ## Known gaps vs. Pitchdeck
 

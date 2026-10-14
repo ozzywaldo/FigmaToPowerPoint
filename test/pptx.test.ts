@@ -64,7 +64,9 @@ const slides: Slide[] = [
 ];
 
 async function writeDeck(): Promise<JSZip> {
-  const pptx = buildPresentation(PptxGenJS, { wPx: 1920, hPx: 1080, slides, options: { ...DEFAULT_OPTIONS, fileName: 'Test deck' } });
+  // Pin the layout so the expected EMU/pt numbers below stay meaningful regardless of defaults.
+  const options = { ...DEFAULT_OPTIONS, slideWidthIn: 13.333, fontFace: 'family' as const, fileName: 'Test deck' };
+  const pptx = buildPresentation(PptxGenJS, { wPx: 1920, hPx: 1080, slides, options });
   const data = (await pptx.write({ outputType: 'nodebuffer' })) as Buffer;
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'deck-'));
   await fs.writeFile(path.join(dir, 'test.pptx'), data);
@@ -72,7 +74,8 @@ async function writeDeck(): Promise<JSZip> {
 }
 
 test('layout follows the dominant frame aspect, or a forced ratio', () => {
-  assert.deepEqual(layoutSize({ wPx: 1920, hPx: 1080, options: DEFAULT_OPTIONS }), { width: 13.333, height: 7.4998 });
+  assert.deepEqual(layoutSize({ wPx: 1920, hPx: 1080, options: { ...DEFAULT_OPTIONS, slideWidthIn: 13.333 } }), { width: 13.333, height: 7.4998 });
+  assert.deepEqual(layoutSize({ wPx: 1920, hPx: 1080, options: DEFAULT_OPTIONS }), { width: 20, height: 11.25 });
   assert.deepEqual(layoutSize({ wPx: 1000, hPx: 1000, options: { ...DEFAULT_OPTIONS, layout: '4:3', slideWidthIn: 10 } }), { width: 10, height: 7.5 });
 });
 
@@ -94,7 +97,7 @@ test('writes a valid pptx with every element kind', async () => {
   assert.match(xml, /u="sng"/);
   assert.match(xml, /<a:buChar/);
   assert.match(xml, /<a:buAutoNum/);
-  assert.match(xml, /lnSpc><a:spcPct val="110000"/);
+  assert.match(xml, /lnSpc><a:spcPct val="91667"/); // 110% of font size ÷ 1.2 natural line height
   assert.match(xml, /spc="-96" kern="0"/); // -2% of 48pt
   // shapes
   assert.match(xml, /prst="roundRect"/);
@@ -134,6 +137,8 @@ test('font face resolution', () => {
   assert.equal(resolveFontFace('Inter', 'Semi Bold Italic', 'family'), 'Inter');
   assert.equal(resolveFontFace('Inter', 'Semi Bold Italic', 'family-style'), 'Inter Semi Bold');
   assert.equal(resolveFontFace('Inter', 'Bold', 'family-style'), 'Inter');
+  assert.equal(resolveFontFace('Lato', 'Regular', 'full'), 'Lato Regular');
+  assert.equal(resolveFontFace('Instrument Serif', 'Italic', 'full'), 'Instrument Serif Italic');
   assert.equal(isBold(600, 'Semi Bold'), true);
   assert.equal(isBold(0, 'Black'), true);
   assert.equal(isBold(400, 'Regular'), false);

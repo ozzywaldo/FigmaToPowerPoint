@@ -3,3 +3,5 @@ dist/
 dist-test/
 *.pptx
 .DS_Store
+compare-report/
+*.pdf

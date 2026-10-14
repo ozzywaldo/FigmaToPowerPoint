@@ -301,6 +301,7 @@ async function vectorElement(
   opacity: number,
 ): Promise<Element | null> {
   if (w.ctx.options.vectors === 'raster') return rasterNode(node, w, opacity);
+  if (w.ctx.options.vectors === 'svg') return svgNode(node, w, opacity);
   const own = opacity * node.opacity;
   const fill = solidFromPaints(node.fills, own);
   const stroke = strokeFrom(node, own);
@@ -390,6 +391,32 @@ async function rasterNode(node: SceneNode, w: Walk, parentOpacity: number): Prom
     flipH: false,
     flipV: false,
     format: format === 'JPG' ? 'jpg' : 'png',
+    bytes,
+    opacity: parentOpacity,
+    link: await linkFromReactions(node, w),
+  };
+}
+
+/** Vector layers as SVG: resolution independent, and PowerPoint can convert them to shapes on demand. */
+async function svgNode(node: SceneNode, w: Walk, parentOpacity: number): Promise<ImageElement | null> {
+  const bounds = renderBounds(node);
+  if (!bounds || bounds.width < 0.5 || bounds.height < 0.5) return null;
+  let bytes: Uint8Array;
+  try {
+    bytes = await node.exportAsync({ format: 'SVG', svgOutlineText: true, svgIdAttribute: false, svgSimplifyStroke: true });
+  } catch (e) {
+    w.warn(node, `SVG export failed (${(e as Error).message}); exported as PNG instead.`);
+    return rasterNode(node, w, parentOpacity);
+  }
+  return {
+    type: 'image',
+    id: node.id,
+    name: node.name,
+    ...rectInSlide(w.slideInv, bounds),
+    rotation: 0,
+    flipH: false,
+    flipV: false,
+    format: 'svg',
     bytes,
     opacity: parentOpacity,
     link: await linkFromReactions(node, w),

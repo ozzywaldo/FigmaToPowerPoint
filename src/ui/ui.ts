@@ -237,10 +237,10 @@ function renderOptions(busy: boolean): HTMLElement {
         }),
         h('span', { style: 'color:var(--text-3)' }, ['in']),
       ]),
-      '13.333 in is PowerPoint’s widescreen default (1920 px → 1 px = 0.5 pt).',
+      '20 in = 96 DPI (1920 px → 1 px = 0.75 pt, as Pitchdeck). 13.333 in is PowerPoint’s own default.',
     ),
     field('Layers', sel('editable', [[true, 'Editable text & shapes'], [false, 'Flatten each slide to an image']])),
-    field('Vectors', sel('vectors', [['shapes', 'Editable freeform shapes'], ['raster', 'Images']])),
+    field('Vectors', sel('vectors', [['shapes', 'Editable freeform shapes'], ['svg', 'SVG (crisp, convertible in PowerPoint)'], ['raster', 'PNG images']])),
     field('Images', h('div', { class: 'inline' }, [
       sel('imageScale', [[1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']]),
       sel('imageFormat', [['auto', 'Auto PNG/JPG'], ['png', 'Always PNG'], ['jpg', 'Always JPG']]),
@@ -250,7 +250,14 @@ function renderOptions(busy: boolean): HTMLElement {
       type: 'text', value: o.notesLayerName, placeholder: 'notes', disabled: busy ? 'disabled' : null,
       onchange: (e: Event) => updateOption('notesLayerName', (e.target as HTMLInputElement).value),
     }), 'Text layers whose name starts with this become speaker notes.'),
-    field('Font names', sel('fontFace', [['family', 'Family only (Inter)'], ['family-style', 'Family + weight (Inter SemiBold)']])),
+    field('Font names', sel('fontFace', [['family-style', 'Family + weight (Inter SemiBold)'], ['family', 'Family only (Inter)'], ['full', 'Full name (Inter Regular) — Pitchdeck style']])),
+    field('Text box width', h('div', { class: 'inline' }, [
+      h('input', {
+        type: 'number', step: '0.5', min: '-20', max: '20', value: String(o.textWidthAdjustPct), disabled: busy ? 'disabled' : null,
+        onchange: (e: Event) => updateOption('textWidthAdjustPct', Number((e.target as HTMLInputElement).value) || 0),
+      }),
+      h('span', { style: 'color:var(--text-3)' }, ['%']),
+    ]), 'Widen (+) or narrow (−) fixed-width text boxes if PowerPoint wraps lines differently than Figma.'),
     field('File name', h('input', {
       type: 'text', value: o.fileName, placeholder: state.fileName, disabled: busy ? 'disabled' : null,
       onchange: (e: Event) => updateOption('fileName', (e.target as HTMLInputElement).value),
