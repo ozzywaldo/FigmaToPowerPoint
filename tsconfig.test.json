@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["@figma/plugin-typings", "node"]
+  },
+  "include": ["src/**/*", "test/**/*"]
+}
