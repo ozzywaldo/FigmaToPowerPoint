@@ -185,6 +185,11 @@ export interface ExportOptions {
    * little from Figma's, so lines can wrap early (positive values widen) or late (negative narrows).
    */
   textWidthAdjustPct: number;
+  /**
+   * Multiplier on every font size, letter spacing and line height. Figma's own PowerPoint export
+   * uses 0.95 to stop PowerPoint, whose glyph advances run wider than Figma's, from wrapping early.
+   */
+  fontScale: number;
   fileName: string;
 }
 
@@ -199,6 +204,7 @@ export const DEFAULT_OPTIONS: ExportOptions = {
   notesLayerName: 'notes',
   fontFace: 'family-style',
   textWidthAdjustPct: 0,
+  fontScale: 1,
   fileName: '',
 };
 

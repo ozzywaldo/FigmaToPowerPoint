@@ -251,6 +251,13 @@ function renderOptions(busy: boolean): HTMLElement {
       onchange: (e: Event) => updateOption('notesLayerName', (e.target as HTMLInputElement).value),
     }), 'Text layers whose name starts with this become speaker notes.'),
     field('Font names', sel('fontFace', [['family-style', 'Family + weight (Inter SemiBold)'], ['family', 'Family only (Inter)'], ['full', 'Full name (Inter Regular) — Pitchdeck style']])),
+    field('Font scale', h('div', { class: 'inline' }, [
+      h('input', {
+        type: 'number', step: '0.01', min: '0.5', max: '1.5', value: String(o.fontScale), disabled: busy ? 'disabled' : null,
+        onchange: (e: Event) => updateOption('fontScale', Number((e.target as HTMLInputElement).value) || 1),
+      }),
+      h('span', { style: 'color:var(--text-3)' }, ['×']),
+    ]), 'Figma’s own PowerPoint export uses 0.95 because PowerPoint sets type slightly wider than Figma.'),
     field('Text box width', h('div', { class: 'inline' }, [
       h('input', {
         type: 'number', step: '0.5', min: '-20', max: '20', value: String(o.textWidthAdjustPct), disabled: busy ? 'disabled' : null,

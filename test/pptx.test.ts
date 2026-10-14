@@ -97,7 +97,7 @@ test('writes a valid pptx with every element kind', async () => {
   assert.match(xml, /u="sng"/);
   assert.match(xml, /<a:buChar/);
   assert.match(xml, /<a:buAutoNum/);
-  assert.match(xml, /lnSpc><a:spcPct val="91667"/); // 110% of font size ÷ 1.2 natural line height
+  assert.match(xml, /lnSpc><a:spcPts val="5280"/); // 110% of a 96 px font = 105.6 px × 0.5 pt/px (13.333 in layout)
   assert.match(xml, /spc="-96" kern="0"/); // -2% of 48pt
   // shapes
   assert.match(xml, /prst="roundRect"/);

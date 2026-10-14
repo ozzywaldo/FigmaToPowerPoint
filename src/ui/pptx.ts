@@ -215,6 +215,7 @@ function addImage(ps: PptxSlide, el: ImageElement, u: Units, slideNumbers: Map<s
 
 function addText(ps: PptxSlide, el: TextElement, u: Units, options: ExportOptions, slideNumbers: Map<string, number>): void {
   const runs: TextProps[] = [];
+  const fontScale = options.fontScale || 1;
   el.paragraphs.forEach((p, pi) => {
     const last = pi === el.paragraphs.length - 1;
     const paragraphOpts: TextPropsOptions = {
@@ -228,7 +229,7 @@ function addText(ps: PptxSlide, el: TextElement, u: Units, options: ExportOption
       return;
     }
     p.runs.forEach((r, ri) => {
-      const fontSize = u.pt(r.fontSizePx);
+      const fontSize = round(u.pt(r.fontSizePx) * fontScale, 2);
       const o: TextPropsOptions = {
         ...paragraphOpts,
         fontFace: resolveFontFace(r.fontFamily, r.fontStyle, options.fontFace),
@@ -240,7 +241,7 @@ function addText(ps: PptxSlide, el: TextElement, u: Units, options: ExportOption
         underline: r.underline ? { style: 'sng' } : undefined,
         strike: r.strike ? 'sngStrike' : undefined,
         charSpacing: r.letterSpacing
-          ? round(r.letterSpacing.unit === 'px' ? u.pt(r.letterSpacing.value) : (fontSize * r.letterSpacing.value) / 100, 2)
+          ? round(r.letterSpacing.unit === 'px' ? u.pt(r.letterSpacing.value) * fontScale : (fontSize * r.letterSpacing.value) / 100, 2)
           : undefined,
         hyperlink: hyperlink(r.link, slideNumbers),
         softBreakBefore: r.softBreakBefore || undefined,
@@ -265,9 +266,11 @@ function addText(ps: PptxSlide, el: TextElement, u: Units, options: ExportOption
     objectName: el.name,
   };
   if (el.lineHeight) {
-    if (el.lineHeight.unit === 'px') box.lineSpacing = u.pt(el.lineHeight.value);
-    // Figma's % is of the font size; PowerPoint's % is of the font's natural line height (≈1.2 em).
-    else box.lineSpacingMultiple = round(el.lineHeight.value / 120, 5);
+    // Always exact points, as Figma's own export does: PowerPoint's "100%" is the font's natural
+    // line height (varies per font), Figma's % is of the font size, so a multiple can't be exact.
+    const firstFontPx = el.paragraphs[0]?.runs[0]?.fontSizePx ?? 0;
+    const px = el.lineHeight.unit === 'px' ? el.lineHeight.value : (firstFontPx * el.lineHeight.value) / 100;
+    if (px > 0) box.lineSpacing = round(u.pt(px) * fontScale, 2);
   }
   ps.addText(runs, stripUndefined(box));
 }

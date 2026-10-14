@@ -141,10 +141,23 @@ Calibrating against a 31-slide deck exported by Pitchdeck and the matching Figma
 | Text boxes: zero insets, `wrap="square"`, anchor from Figma vertical align | same |
 | Font faces written as full names ("Lato Regular", "Instrument Serif Italic") | `fontFace: 'full'`; default is family + weight, which fontconfig/LibreOffice resolves and PowerPoint lists |
 | Letter spacing: `spc` = tracking in 1/100 pt, `kern="0"` | same |
-| Line height: pixels → exact `spcPts`; percent → `spcPct` = Figma % ÷ 1.2 | same |
+| Line height: pixels → exact `spcPts`; percent → `spcPct` = Figma % ÷ 1.2 | always exact `spcPts` (percent × font size), as Figma's own export does, so no font-metric assumption |
 | Every slide's frame fill rasterised to a full-bleed image | solid fills become a slide background; only non-solid fills are rasterised |
 | Vectors and logos as SVG with PNG fallback | `vectors: 'svg'` does the same; the default emits editable freeforms |
 | Groups with masks/clipping, gradients, textures → PNG | same, each reported as a warning |
+
+Figma Slides' built-in PowerPoint export of the same deck was benchmarked too. It writes a 10 in
+deck with family-only font names (weights like Light are lost), scales every font size, tracking and
+line height by **0.95** (its answer to PowerPoint setting type wider than Figma; exposed here as the
+*Font scale* option, default 1), and emits an empty rectangle for every frame. On this deck it also
+dropped the textured cover and closing backgrounds, mis-cropped two section images, lost the donut
+chart and swallowed the spaces between styled runs in titles ("Breaking DownFund I").
+
+| Rendered with LibreOffice vs the Figma PDF, 31 slides | mean RMSE | pixels moved |
+| --- | --- | --- |
+| Figma Slides built-in export | 0.137 | 9.4 % |
+| Pitchdeck export | 0.0915 | 4.2 % |
+| Pitchdeck deck re-emitted by this plugin's emitter | 0.0915 | 4.2 % |
 
 Round-tripping that deck through this emitter and rendering both files gives pixel-identical slides
 on 25 of 31 (mean RMSE 0.002; the rest differ only where SVGs were swapped for their PNG fallback).
