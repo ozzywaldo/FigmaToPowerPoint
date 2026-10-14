@@ -27,7 +27,7 @@ import type {
 import { invert, multiply, placementFromTransform, rectInSlide, round, type Mat } from './geometry';
 import { effectsFrom, hasImagePaint, solidFromPaints, strokeFrom, visiblePaints } from './paint';
 import { extractTextContent } from './text';
-import { parsePaths } from './vector';
+import { normalizeWinding, parsePaths } from './vector';
 
 export type SlideRoot = FrameNode | ComponentNode | InstanceNode | SlideNode;
 
@@ -161,6 +161,11 @@ async function container(node: Container, w: Walk, parentOpacity: number): Promi
 
   if (node.children.some((c) => 'isMask' in c && c.isMask)) {
     w.warn(node, 'Contains a mask; exported as one image.');
+    return push(w, await rasterNode(node, w, parentOpacity));
+  }
+  // A blend-mode layer only makes sense composited with what is under it: flatten the container.
+  if (!isRootLike && node.children.some((c) => c.visible && 'blendMode' in c && c.blendMode !== 'NORMAL' && c.blendMode !== 'PASS_THROUGH')) {
+    w.warn(node, 'Contains a blend-mode layer; exported as one image.');
     return push(w, await rasterNode(node, w, parentOpacity));
   }
 
@@ -307,7 +312,9 @@ async function vectorElement(
   const stroke = strokeFrom(node, own);
   const fx = effectsFrom(node, own);
   const paths = node.type === 'VECTOR' && node.fillGeometry.length === 0 ? node.vectorPaths : node.fillGeometry;
-  const commands = paths.some((p) => p.windingRule === 'EVENODD') ? null : parsePaths(paths);
+  // Every subpath is re-oriented by nesting depth, so even-odd paths render correctly in PowerPoint.
+  const parsed = parsePaths(paths);
+  const commands = parsed ? normalizeWinding(parsed) : null;
   if (fill === null || stroke === null || fx === null || commands === null || commands.length === 0) {
     w.warn(node, 'Vector could not be converted to an editable shape; exported as an image.');
     return rasterNode(node, w, opacity);
